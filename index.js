@@ -121,12 +121,38 @@ function findFileUpwards(startDir, relPath, maxLevels = 6) {
 
 async function tryImportCandidates(relCandidates) {
   for (const rel of relCandidates) {
+    // 1) try searching upwards from the current file directory
     const found = findFileUpwards(__dir, rel, 6);
-    if (!found) continue;
+    if (found) {
+      try {
+        return await import(pathToFileURL(found).href);
+      } catch (e) {
+        // continue trying other candidates
+      }
+    }
+
+    // 2) try absolute path from process.cwd()
     try {
-      return await import(pathToFileURL(found).href);
+      const abs = path.resolve(process.cwd(), rel);
+      if (fs.existsSync(abs)) return await import(pathToFileURL(abs).href);
     } catch (e) {
-      // continue trying other candidates
+      // ignore
+    }
+
+    // 3) try inside a top-level NoCostCord folder (when repo root contains the project dir)
+    try {
+      const abs2 = path.resolve(process.cwd(), 'NoCostCord', rel);
+      if (fs.existsSync(abs2)) return await import(pathToFileURL(abs2).href);
+    } catch (e) {
+      // ignore
+    }
+
+    // 4) try relative to __dir without upward search (in case rel is already correct)
+    try {
+      const direct = path.join(__dir, rel);
+      if (fs.existsSync(direct)) return await import(pathToFileURL(direct).href);
+    } catch (e) {
+      // ignore
     }
   }
   throw new Error(`Module not found in candidates: ${relCandidates.join(', ')}`);
