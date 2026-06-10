@@ -89,22 +89,7 @@ export async function handleMessage(client, message) {
           const dmTest = await message.author.send({ content: `Interface pour \`${cmd.name}\``, components: [row] }).catch(() => null);
           if (dmTest) {
             try { await message.channel.send(`${message.author}, je t'ai envoyé une interface en DM.`); } catch {}
-            // continue to also send in-channel below (the DM may be sufficient)
-          }
-        } catch (e) {
-          // ignore DM errors
-        }
-
-        const prompt = await message.channel.send({ content: `Interface pour \\`${cmd.name}\\``, components: [row] });
-        const filter = (i) => i.user.id === message.author.id;
-        const collector = prompt.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 60000 });
-
-        collector.on('collect', async (interaction) => {
-          await interaction.deferUpdate();
-          const sel = interaction.values[0];
-          if (sel === 'usage') {
-            const usage = cmd.usage || 'Pas d\'utilisation documentée.';
-            await interaction.followUp({ content: `Usage: ${usage}`, ephemeral: true });
+              const prompt = await message.channel.send({ content: `Interface pour \`${cmd.name}\``, components: [row] });
           } else if (sel === 'desc') {
             await interaction.followUp({ content: `Description: ${cmd.description || 'Aucune description.'}`, ephemeral: true });
           } else if (sel === 'enter') {
