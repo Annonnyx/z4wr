@@ -54,11 +54,13 @@ export default {
       }
       if (cur) chunks.push(cur);
 
-      // remove components and show first chunk
-      await interaction.editReply({ content: header + chunks[0], components: [] });
+      // remove components from visible prompt
+      try { await prompt.edit({ components: [] }); } catch {}
 
+      // send the command list ephemerally to the user to avoid long public messages
+      await interaction.followUp({ content: header + chunks[0], ephemeral: true });
       for (let i = 1; i < chunks.length; i++) {
-        await interaction.followUp({ content: chunks[i], ephemeral: false });
+        await interaction.followUp({ content: chunks[i], ephemeral: true });
       }
     });
 
