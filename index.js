@@ -242,6 +242,8 @@ const helpMod = await tryImportCandidates(['src/modules/helpMenu.js', 'modules/h
 const keepAliveMod = await tryImportCandidates(['keepAlive.js', 'NoCostCord/keepAlive.js', '../keepAlive.js']);
 
 const { initDb } = dbMod;
+console.log('[BOOT] loaderMod keys:', Object.keys(loaderMod || {}));
+console.log('[BOOT] loaderMod.loadCommands type:', typeof (loaderMod && loaderMod.loadCommands));
 const { loadCommands } = loaderMod;
 const { handleMessage } = msgMod;
 const { registerSniper } = sniperMod;
