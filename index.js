@@ -123,6 +123,15 @@ async function tryImportCandidates(relCandidates) {
   for (const rel of relCandidates) {
     // 1) try searching upwards from the current file directory
     const found = findFileUpwards(__dir, rel, 6);
+    // debug tracing of candidates
+    try {
+      const abs = path.resolve(process.cwd(), rel);
+      const abs2 = path.resolve(process.cwd(), 'NoCostCord', rel);
+      const direct = path.join(__dir, rel);
+      console.log(`[BOOT] candidate check for '${rel}': foundUpwards=${found ? 'yes' : 'no'} exists(cwd/${rel})=${fs.existsSync(abs) ? 'yes' : 'no'} exists(NoCostCord/${rel})=${fs.existsSync(abs2) ? 'yes' : 'no'} exists(__dir/${rel})=${fs.existsSync(direct) ? 'yes' : 'no'}`);
+    } catch (e) {
+      // ignore
+    }
     if (found) {
       try {
         return await import(pathToFileURL(found).href);
