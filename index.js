@@ -107,6 +107,21 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const __file = fileURLToPath(import.meta.url);
 const __dir = path.dirname(__file);
 
+// Diagnostic: print directory listings to help identify deployed layout
+try {
+  console.log('[BOOT] __dir:', __dir);
+  console.log('[BOOT] __dir listing:', fs.readdirSync(__dir));
+} catch (e) {
+  console.log('[BOOT] __dir listing failed:', e.message);
+}
+
+try {
+  console.log('[BOOT] process.cwd():', process.cwd());
+  console.log('[BOOT] cwd listing:', fs.readdirSync(process.cwd()));
+} catch (e) {
+  console.log('[BOOT] cwd listing failed:', e.message);
+}
+
 function findFileUpwards(startDir, relPath, maxLevels = 6) {
   let dir = startDir;
   for (let i = 0; i < maxLevels; i++) {
