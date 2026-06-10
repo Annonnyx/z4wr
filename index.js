@@ -2,22 +2,23 @@ import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
 import { Client, GatewayIntentBits, Partials, Collection, PermissionsBitField } from 'discord.js';
-import { initDb } from './lib/db.js';
-import { loadCommands } from './lib/loader.js';
-import { handleMessage } from './lib/messageHandler.js';
-import { registerSniper } from './lib/sniper.js';
-import { registerAntiRaid } from './modules/antiraid.js';
-import { registerJoin } from './modules/join.js';
-import { registerCounters } from './modules/counters.js';
-import { registerTicketInteractions } from './modules/tickets.js';
-import { registerSetupMenu } from './modules/setupMenu.js';
-import { registerHelpMenu } from './modules/helpMenu.js';
+import { initDb } from './src/lib/db.js';
+import { loadCommands } from './src/lib/loader.js';
+import { handleMessage } from './src/lib/messageHandler.js';
+import { registerSniper } from './src/lib/sniper.js';
+import { registerAntiRaid } from './src/modules/antiraid.js';
+import { registerJoin } from './src/modules/join.js';
+import { registerCounters } from './src/modules/counters.js';
+import { registerTicketInteractions } from './src/modules/tickets.js';
+import { registerSetupMenu } from './src/modules/setupMenu.js';
+import { registerHelpMenu } from './src/modules/helpMenu.js';
 import { keepAlive } from './keepAlive.js';
 
 function loadEnv() {
   const envRoot = path.resolve(process.cwd(), '.env');
   const envSrc = path.resolve(process.cwd(), 'src', '.env');
-  const candidates = [envRoot, envSrc];
+  const envCfg = path.resolve(process.cwd(), 'cfg', '.env');
+  const candidates = [envRoot, envSrc, envCfg];
 
   const extractToken = (raw) => {
     if (!raw) return null;
