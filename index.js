@@ -179,6 +179,40 @@ async function tryImportCandidates(relCandidates) {
       // ignore
     }
   }
+  // As a last resort, search the repository for a file named 'db.js' under any 'lib' folder
+  try {
+    const maxDepth = 6;
+    const visited = new Set();
+    function search(dir, depth) {
+      if (depth > maxDepth) return null;
+      let entries;
+      try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch { return null; }
+      for (const e of entries) {
+        const p = path.join(dir, e.name);
+        if (e.isDirectory()) {
+          if (!visited.has(p)) {
+            visited.add(p);
+            const found = search(p, depth + 1);
+            if (found) return found;
+          }
+        } else if (e.isFile()) {
+          if (e.name === 'db.js' && dir.endsWith(path.join('lib'))) {
+            return p;
+          }
+        }
+      }
+      return null;
+    }
+
+    const foundAny = search(process.cwd(), 0);
+    if (foundAny) {
+      console.log('[BOOT] found db via recursive search:', foundAny);
+      return await import(pathToFileURL(foundAny).href);
+    }
+  } catch (e) {
+    // ignore search errors
+  }
+
   throw new Error(`Module not found in candidates: ${relCandidates.join(', ')}`);
 }
 
