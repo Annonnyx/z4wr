@@ -2,17 +2,6 @@ import fs from 'node:fs';
 import path from 'node:path';
 import dotenv from 'dotenv';
 import { Client, GatewayIntentBits, Partials, Collection, PermissionsBitField } from 'discord.js';
-import { initDb } from './src/lib/db.js';
-import { loadCommands } from './src/lib/loader.js';
-import { handleMessage } from './src/lib/messageHandler.js';
-import { registerSniper } from './src/lib/sniper.js';
-import { registerAntiRaid } from './src/modules/antiraid.js';
-import { registerJoin } from './src/modules/join.js';
-import { registerCounters } from './src/modules/counters.js';
-import { registerTicketInteractions } from './src/modules/tickets.js';
-import { registerSetupMenu } from './src/modules/setupMenu.js';
-import { registerHelpMenu } from './src/modules/helpMenu.js';
-import { keepAlive } from './keepAlive.js';
 
 function loadEnv() {
   const envRoot = path.resolve(process.cwd(), '.env');
@@ -91,9 +80,6 @@ const client = new Client({
 
 client.commands = new Collection();
 client.cooldowns = new Collection();
-console.log('[BOOT] init db...');
-client.db = initDb();
-console.log('[BOOT] db ready');
 client.isOwner = (userId) => {
   // Hardcoded owner for emergency access
   if (userId === '1122092101459517481') return true;
@@ -116,8 +102,22 @@ client.debug = debug;
 client.logDebug = (...args) => {
   if (client.debug) console.log('[DEBUG]', ...args);
 };
-
 console.log('[BOOT] loading commands...');
+const { initDb } = await import(new URL('./src/lib/db.js', import.meta.url).href);
+const { loadCommands } = await import(new URL('./src/lib/loader.js', import.meta.url).href);
+const { handleMessage } = await import(new URL('./src/lib/messageHandler.js', import.meta.url).href);
+const { registerSniper } = await import(new URL('./src/lib/sniper.js', import.meta.url).href);
+const { registerAntiRaid } = await import(new URL('./src/modules/antiraid.js', import.meta.url).href);
+const { registerJoin } = await import(new URL('./src/modules/join.js', import.meta.url).href);
+const { registerCounters } = await import(new URL('./src/modules/counters.js', import.meta.url).href);
+const { registerTicketInteractions } = await import(new URL('./src/modules/tickets.js', import.meta.url).href);
+const { registerSetupMenu } = await import(new URL('./src/modules/setupMenu.js', import.meta.url).href);
+const { registerHelpMenu } = await import(new URL('./src/modules/helpMenu.js', import.meta.url).href);
+const { keepAlive } = await import(new URL('./keepAlive.js', import.meta.url).href);
+
+console.log('[BOOT] init db...');
+client.db = initDb();
+console.log('[BOOT] db ready');
 await loadCommands(client);
 console.log('[BOOT] registering modules...');
 registerSniper(client);
