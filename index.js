@@ -121,6 +121,19 @@ try {
 } catch (e) {
   console.log('[BOOT] cwd listing failed:', e.message);
 }
+// Extra diagnostics: list contents of ./src and ./src/lib if present
+try {
+  const srcPath = path.join(process.cwd(), 'src');
+  console.log('[BOOT] src path exists:', fs.existsSync(srcPath));
+  if (fs.existsSync(srcPath)) {
+    console.log('[BOOT] src listing:', fs.readdirSync(srcPath));
+    const libPath = path.join(srcPath, 'lib');
+    console.log('[BOOT] src/lib exists:', fs.existsSync(libPath));
+    if (fs.existsSync(libPath)) console.log('[BOOT] src/lib listing:', fs.readdirSync(libPath));
+  }
+} catch (e) {
+  console.log('[BOOT] src diagnostics failed:', e.message);
+}
 
 function findFileUpwards(startDir, relPath, maxLevels = 6) {
   let dir = startDir;
