@@ -164,6 +164,7 @@ async function tryImportCandidates(relCandidates) {
       try {
         return await import(pathToFileURL(found).href);
       } catch (e) {
+        console.error(`[BOOT] import failed for ${found}:`, e && e.message ? e.message : e);
         // continue trying other candidates
       }
     }
