@@ -59,6 +59,18 @@ export async function handleMessage(client, message) {
     }
   }
 
+  // If command defines an interactive UI and no args were provided, call it.
+  try {
+    if ((!args || args.length === 0) && typeof cmd.interactive === 'function') {
+      await cmd.interactive({ client, message, args, prefix });
+      return;
+    }
+  } catch (e) {
+    console.error('[INTERACTIVE_ERR]', e);
+    await safeReply(message, "Erreur lors de l'ouverture de l'interface.");
+    return;
+  }
+
   try {
     await cmd.execute({ client, message, args, prefix });
   } catch (e) {
