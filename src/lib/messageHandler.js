@@ -8,6 +8,15 @@ async function safeReply(message, content) {
 
 export async function handleMessage(client, message) {
   console.log(`[DEBUG] handleMessage called for message ${message.id} from ${message.author?.id} | webhook: ${message.webhookId} | bot: ${message.author?.bot}`);
+  // dedupe: avoid handling the same message twice in this process
+  try {
+    if (!client._recentMessages) client._recentMessages = new Map();
+    if (client._recentMessages.has(message.id)) return;
+    client._recentMessages.set(message.id, Date.now());
+    setTimeout(() => client._recentMessages.delete(message.id), 5000);
+  } catch (e) {
+    // ignore dedupe errors
+  }
   if (!message || message.author?.bot || message.webhookId) return;
 
   if (message.guildId) {
