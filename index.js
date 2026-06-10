@@ -103,35 +103,46 @@ client.logDebug = (...args) => {
   if (client.debug) console.log('[DEBUG]', ...args);
 };
 console.log('[BOOT] loading commands...');
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 const __file = fileURLToPath(import.meta.url);
 const __dir = path.dirname(__file);
 
-async function tryImport(candidates) {
-  for (const p of candidates) {
-    try {
-      const full = new URL(p, import.meta.url).href;
-      const fsPath = fileURLToPath(full);
-      if (!fs.existsSync(fsPath)) continue;
-      return await import(full);
-    } catch (e) {
-      // continue trying
-    }
+function findFileUpwards(startDir, relPath, maxLevels = 6) {
+  let dir = startDir;
+  for (let i = 0; i < maxLevels; i++) {
+    const candidate = path.join(dir, relPath);
+    if (fs.existsSync(candidate)) return candidate;
+    const parent = path.dirname(dir);
+    if (parent === dir) break;
+    dir = parent;
   }
-  throw new Error(`Module not found in candidates: ${candidates.join(', ')}`);
+  return null;
 }
 
-const dbMod = await tryImport(['./src/lib/db.js', './lib/db.js', './NoCostCord/src/lib/db.js', '../src/lib/db.js']);
-const loaderMod = await tryImport(['./src/lib/loader.js', './lib/loader.js', './NoCostCord/src/lib/loader.js', '../src/lib/loader.js']);
-const msgMod = await tryImport(['./src/lib/messageHandler.js', './lib/messageHandler.js', './NoCostCord/src/lib/messageHandler.js', '../src/lib/messageHandler.js']);
-const sniperMod = await tryImport(['./src/lib/sniper.js', './lib/sniper.js', './NoCostCord/src/lib/sniper.js', '../src/lib/sniper.js']);
-const antiraidMod = await tryImport(['./src/modules/antiraid.js', './modules/antiraid.js', './NoCostCord/src/modules/antiraid.js', '../src/modules/antiraid.js']);
-const joinMod = await tryImport(['./src/modules/join.js', './modules/join.js', './NoCostCord/src/modules/join.js', '../src/modules/join.js']);
-const countersMod = await tryImport(['./src/modules/counters.js', './modules/counters.js', './NoCostCord/src/modules/counters.js', '../src/modules/counters.js']);
-const ticketsMod = await tryImport(['./src/modules/tickets.js', './modules/tickets.js', './NoCostCord/src/modules/tickets.js', '../src/modules/tickets.js']);
-const setupMod = await tryImport(['./src/modules/setupMenu.js', './modules/setupMenu.js', './NoCostCord/src/modules/setupMenu.js', '../src/modules/setupMenu.js']);
-const helpMod = await tryImport(['./src/modules/helpMenu.js', './modules/helpMenu.js', './NoCostCord/src/modules/helpMenu.js', '../src/modules/helpMenu.js']);
-const keepAliveMod = await tryImport(['./keepAlive.js', './NoCostCord/keepAlive.js', '../keepAlive.js']);
+async function tryImportCandidates(relCandidates) {
+  for (const rel of relCandidates) {
+    const found = findFileUpwards(__dir, rel, 6);
+    if (!found) continue;
+    try {
+      return await import(pathToFileURL(found).href);
+    } catch (e) {
+      // continue trying other candidates
+    }
+  }
+  throw new Error(`Module not found in candidates: ${relCandidates.join(', ')}`);
+}
+
+const dbMod = await tryImportCandidates(['src/lib/db.js', 'lib/db.js', 'NoCostCord/src/lib/db.js', '../src/lib/db.js']);
+const loaderMod = await tryImportCandidates(['src/lib/loader.js', 'lib/loader.js', 'NoCostCord/src/lib/loader.js', '../src/lib/loader.js']);
+const msgMod = await tryImportCandidates(['src/lib/messageHandler.js', 'lib/messageHandler.js', 'NoCostCord/src/lib/messageHandler.js', '../src/lib/messageHandler.js']);
+const sniperMod = await tryImportCandidates(['src/lib/sniper.js', 'lib/sniper.js', 'NoCostCord/src/lib/sniper.js', '../src/lib/sniper.js']);
+const antiraidMod = await tryImportCandidates(['src/modules/antiraid.js', 'modules/antiraid.js', 'NoCostCord/src/modules/antiraid.js', '../src/modules/antiraid.js']);
+const joinMod = await tryImportCandidates(['src/modules/join.js', 'modules/join.js', 'NoCostCord/src/modules/join.js', '../src/modules/join.js']);
+const countersMod = await tryImportCandidates(['src/modules/counters.js', 'modules/counters.js', 'NoCostCord/src/modules/counters.js', '../src/modules/counters.js']);
+const ticketsMod = await tryImportCandidates(['src/modules/tickets.js', 'modules/tickets.js', 'NoCostCord/src/modules/tickets.js', '../src/modules/tickets.js']);
+const setupMod = await tryImportCandidates(['src/modules/setupMenu.js', 'modules/setupMenu.js', 'NoCostCord/src/modules/setupMenu.js', '../src/modules/setupMenu.js']);
+const helpMod = await tryImportCandidates(['src/modules/helpMenu.js', 'modules/helpMenu.js', 'NoCostCord/src/modules/helpMenu.js', '../src/modules/helpMenu.js']);
+const keepAliveMod = await tryImportCandidates(['keepAlive.js', 'NoCostCord/keepAlive.js', '../keepAlive.js']);
 
 const { initDb } = dbMod;
 const { loadCommands } = loaderMod;
