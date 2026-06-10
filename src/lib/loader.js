@@ -59,7 +59,7 @@ function makeInteractiveFor(cmd) {
         const reason = await ask('Raison (optionnel):');
 
         // confirmation
-        await message.channel.send(`Confirmer l'exécution de \\`${cmd.name} ${targetId} ${reason || ''}\\` ? (oui/non)`);
+        await message.channel.send(`Confirmer l'exécution de \`${cmd.name} ${targetId} ${reason || ''}\` ? (oui/non)`);
         const conf = await ask('Tapez `oui` pour confirmer, autre pour annuler:', { time: 20000 });
         if (!conf || !/^o/i.test(conf)) return message.channel.send('Annulé.');
         const newArgs = [targetId].concat(reason ? reason.split(/\s+/g) : []);
@@ -78,7 +78,7 @@ function makeInteractiveFor(cmd) {
       if (cmd.category === 'owner') {
         const text = await ask('Arguments (séparés par espaces):');
         if (text === null) return message.channel.send('Temps écoulé.');
-        await message.channel.send(`Exécuter \\`${cmd.name} ${text}\\` ? (oui/non)`);
+        await message.channel.send(`Exécuter \`${cmd.name} ${text}\` ? (oui/non)`);
         const conf = await ask('Tapez `oui` pour confirmer:', { time: 20000 });
         if (!conf || !/^o/i.test(conf)) return message.channel.send('Annulé.');
         const newArgs = text.length ? text.split(/\s+/g) : [];
