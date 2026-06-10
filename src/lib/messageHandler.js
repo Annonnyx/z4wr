@@ -65,6 +65,60 @@ export async function handleMessage(client, message) {
       await cmd.interactive({ client, message, args, prefix });
       return;
     }
+
+    // Generic interactive UI fallback: when no args and no custom interactive, show a small menu
+    if ((!args || args.length === 0) && typeof cmd.interactive !== 'function') {
+      try {
+        const { ActionRowBuilder, StringSelectMenuBuilder, ComponentType } = await import('discord.js');
+        const options = [
+          { label: 'Usage', value: 'usage', description: 'Voir l\'utilisation de la commande' },
+          { label: 'Description', value: 'desc', description: 'Voir la description de la commande' },
+          { label: 'Entrer des arguments', value: 'enter', description: 'Fournir des arguments pour exécuter la commande' }
+        ];
+
+        const row = new ActionRowBuilder().addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(`cmd_ui_${cmd.name}_${message.author.id}_${Date.now()}`)
+            .setPlaceholder('Choisis une action')
+            .addOptions(options)
+            .setMaxValues(1)
+        );
+
+        const prompt = await message.channel.send({ content: `Interface pour \\`${cmd.name}\\``, components: [row] });
+        const filter = (i) => i.user.id === message.author.id;
+        const collector = prompt.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 60000 });
+
+        collector.on('collect', async (interaction) => {
+          await interaction.deferUpdate();
+          const sel = interaction.values[0];
+          if (sel === 'usage') {
+            const usage = cmd.usage || 'Pas d\'utilisation documentée.';
+            await interaction.followUp({ content: `Usage: ${usage}`, ephemeral: true });
+          } else if (sel === 'desc') {
+            await interaction.followUp({ content: `Description: ${cmd.description || 'Aucune description.'}`, ephemeral: true });
+          } else if (sel === 'enter') {
+            await interaction.followUp({ content: 'Réponds avec la ligne d\'arguments (séparés par espaces).', ephemeral: true });
+            const collected = await message.channel.awaitMessages({ filter: m => m.author.id === message.author.id, max: 1, time: 30000 });
+            const reply = collected.first();
+            if (!reply) return interaction.followUp({ content: 'Temps écoulé.', ephemeral: true });
+            const text = reply.content.trim();
+            const newArgs = text.length ? text.split(/\s+/g) : [];
+            try {
+              await cmd.execute({ client, message, args: newArgs, prefix });
+            } catch (e) {
+              console.error('[CMD_EXEC_ERR]', e);
+              await message.channel.send('Erreur lors de l\'exécution de la commande.');
+            }
+          }
+          collector.stop();
+        });
+
+        collector.on('end', () => { try { prompt.edit({ components: [] }).catch(()=>{}); } catch {} });
+        return;
+      } catch (uiErr) {
+        console.error('[GEN_UI_ERR]', uiErr);
+      }
+    }
   } catch (e) {
     console.error('[INTERACTIVE_ERR]', e);
     await safeReply(message, "Erreur lors de l'ouverture de l'interface.");
