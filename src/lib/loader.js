@@ -42,26 +42,62 @@ export async function loadCommands(client) {
 
 function makeInteractiveFor(cmd) {
   return async function interactive({ client, message, args, prefix }) {
+    const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = await import('discord.js');
+
     const ask = async (prompt, opts = {}) => {
-      await message.channel.send(prompt);
-      const collected = await message.channel.awaitMessages({ filter: m => m.author.id === message.author.id, max: 1, time: opts.time || 30000 });
-      return collected.first()?.content?.trim() ?? null;
+      const time = opts.time || 30000;
+      const cancelBtn = new ButtonBuilder().setCustomId(`cancel_${message.author.id}_${Date.now()}`).setLabel('Annuler').setStyle(ButtonStyle.Danger);
+      const row = new ActionRowBuilder().addComponents(cancelBtn);
+
+      const promptMsg = await message.channel.send({ content: prompt, components: [row] });
+
+      const textPromise = message.channel.awaitMessages({ filter: m => m.author.id === message.author.id, max: 1, time }).then((col) => col.first()?.content?.trim() ?? null);
+
+      const buttonPromise = new Promise((resolve) => {
+        const collector = promptMsg.createMessageComponentCollector({ filter: (i) => i.user.id === message.author.id, time, max: 1 });
+        collector.on('collect', async (interaction) => {
+          try { await interaction.reply({ content: 'Annulé.', ephemeral: true }); } catch {}
+          resolve('__CANCELLED__');
+        });
+        collector.on('end', () => resolve(null));
+      });
+
+      const result = await Promise.race([textPromise, buttonPromise]);
+      try { await promptMsg.edit({ components: [] }).catch(() => {}); } catch {}
+      if (result === '__CANCELLED__' || result == null) return null;
+      return result;
+    };
+
+    const confirm = async (prompt, opts = {}) => {
+      const time = opts.time || 20000;
+      const yes = new ButtonBuilder().setCustomId(`yes_${message.author.id}_${Date.now()}`).setLabel('Oui').setStyle(ButtonStyle.Success);
+      const no = new ButtonBuilder().setCustomId(`no_${message.author.id}_${Date.now()}`).setLabel('Non').setStyle(ButtonStyle.Secondary);
+      const row = new ActionRowBuilder().addComponents(yes, no);
+      const m = await message.channel.send({ content: prompt, components: [row] });
+      try {
+        const inter = await m.awaitMessageComponent({ filter: (i) => i.user.id === message.author.id, time });
+        await inter.deferUpdate().catch(() => {});
+        await m.edit({ components: [] }).catch(() => {});
+        return inter.customId.startsWith('yes_');
+      } catch (e) {
+        try { await m.edit({ components: [] }).catch(() => {}); } catch {}
+        return false;
+      }
     };
 
     try {
       // Moderation commands: ask for target and reason, then confirm
       if (cmd.category === 'moderation') {
         const targetRaw = await ask('Veuillez mentionner la cible ou indiquer son ID:');
-        if (!targetRaw) return message.channel.send('Temps écoulé.');
+        if (!targetRaw) return message.channel.send('Temps écoulé ou annulé.');
         const match = targetRaw.match(/<@!?(\d+)>/) || targetRaw.match(/^(\d+)$/);
         const targetId = match ? match[1] : null;
         if (!targetId) return message.channel.send('Cible invalide.');
         const reason = await ask('Raison (optionnel):');
 
-        // confirmation
-        await message.channel.send(`Confirmer l'exécution de \`${cmd.name} ${targetId} ${reason || ''}\` ? (oui/non)`);
-        const conf = await ask('Tapez `oui` pour confirmer, autre pour annuler:', { time: 20000 });
-        if (!conf || !/^o/i.test(conf)) return message.channel.send('Annulé.');
+        // confirmation via buttons
+        const ok = await confirm(`Confirmer l'exécution de \`${cmd.name} ${targetId} ${reason || ''}\` ?`);
+        if (!ok) return message.channel.send('Annulé.');
         const newArgs = [targetId].concat(reason ? reason.split(/\s+/g) : []);
         return cmd.execute({ client, message, args: newArgs, prefix });
       }
@@ -69,7 +105,7 @@ function makeInteractiveFor(cmd) {
       // Fun commands: ask for content
       if (cmd.category === 'fun') {
         const text = await ask('Texte ou entrée pour la commande:');
-        if (!text) return message.channel.send('Temps écoulé.');
+        if (!text) return message.channel.send('Temps écoulé ou annulé.');
         const newArgs = text.split(/\s+/g);
         return cmd.execute({ client, message, args: newArgs, prefix });
       }
@@ -77,10 +113,9 @@ function makeInteractiveFor(cmd) {
       // Owner commands: ask for args and require confirmation
       if (cmd.category === 'owner') {
         const text = await ask('Arguments (séparés par espaces):');
-        if (text === null) return message.channel.send('Temps écoulé.');
-        await message.channel.send(`Exécuter \`${cmd.name} ${text}\` ? (oui/non)`);
-        const conf = await ask('Tapez `oui` pour confirmer:', { time: 20000 });
-        if (!conf || !/^o/i.test(conf)) return message.channel.send('Annulé.');
+        if (text === null) return message.channel.send('Temps écoulé ou annulé.');
+        const ok = await confirm(`Exécuter \`${cmd.name} ${text}\` ?`);
+        if (!ok) return message.channel.send('Annulé.');
         const newArgs = text.length ? text.split(/\s+/g) : [];
         return cmd.execute({ client, message, args: newArgs, prefix });
       }
@@ -88,7 +123,7 @@ function makeInteractiveFor(cmd) {
       // Config/ticket/antiraid: ask for sub-arguments or show usage
       if (['config', 'ticket', 'antiraid'].includes(cmd.category)) {
         const text = await ask(`Entrez les arguments pour ${cmd.name} ou tapez \`help\` pour voir l'utilisation:`);
-        if (!text) return message.channel.send('Temps écoulé.');
+        if (!text) return message.channel.send('Temps écoulé ou annulé.');
         if (/^help$/i.test(text)) return message.channel.send(cmd.usage || cmd.description || 'Aucune info.');
         const newArgs = text.length ? text.split(/\s+/g) : [];
         return cmd.execute({ client, message, args: newArgs, prefix });
@@ -96,7 +131,7 @@ function makeInteractiveFor(cmd) {
 
       // Fallback: show usage/description and ask for args
       const text = await ask(`Usage: ${cmd.usage || ''}\n${cmd.description || ''}\nEntrez les arguments:`);
-      if (!text) return message.channel.send('Temps écoulé.');
+      if (!text) return message.channel.send('Temps écoulé ou annulé.');
       const newArgs = text.length ? text.split(/\s+/g) : [];
       return cmd.execute({ client, message, args: newArgs, prefix });
     } catch (e) {
