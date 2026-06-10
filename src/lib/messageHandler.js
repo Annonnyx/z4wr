@@ -84,6 +84,17 @@ export async function handleMessage(client, message) {
             .setMaxValues(1)
         );
 
+        // Try to DM the user the interface first to ensure they see something
+        try {
+          const dmTest = await message.author.send({ content: `Interface pour \`${cmd.name}\``, components: [row] }).catch(() => null);
+          if (dmTest) {
+            try { await message.channel.send(`${message.author}, je t'ai envoyé une interface en DM.`); } catch {}
+            // continue to also send in-channel below (the DM may be sufficient)
+          }
+        } catch (e) {
+          // ignore DM errors
+        }
+
         const prompt = await message.channel.send({ content: `Interface pour \\`${cmd.name}\\``, components: [row] });
         const filter = (i) => i.user.id === message.author.id;
         const collector = prompt.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 60000 });
