@@ -20,6 +20,8 @@ export async function loadCommands(client) {
       const mod = await import(full);
       const cmd = mod.default;
       if (!cmd?.name || !cmd?.execute) continue;
+      // attach category for help grouping
+      if (!cmd.category) cmd.category = cat.name;
       client.commands.set(cmd.name, cmd);
       stats.total += 1;
       stats.categories[cat.name] += 1;

@@ -1,27 +1,69 @@
+import { ActionRowBuilder, StringSelectMenuBuilder, ComponentType } from 'discord.js';
+
 export default {
   name: 'help',
   description: 'Liste les commandes disponibles',
   async execute({ client, message }) {
-    const lines = Array.from(client.commands.values()).map((c) => `\`${c.name}\` - ${c.description ?? ''}`);
-    if (!lines.length) return message.channel.send('Aucune commande trouvée.');
+    const cmds = Array.from(client.commands.values());
+    if (!cmds.length) return message.channel.send('Aucune commande trouvée.');
 
-    const header = 'Commandes disponibles:\n';
-    const max = 1900; // keep under Discord 2000 limit
-    const chunks = [];
-    let cur = '';
-    for (const line of lines) {
-      if ((header.length + cur.length + line.length + 1) > max) {
-        chunks.push(cur);
-        cur = line + '\n';
+    const categories = Array.from(new Set(cmds.map((c) => c.category || 'misc'))).sort();
+    const options = [{ label: 'All', value: 'all', description: 'Toutes les commandes' }].concat(
+      categories.map((cat) => ({ label: cat, value: cat, description: `${cat} commands` }))
+    );
+
+    const row = new ActionRowBuilder().addComponents(
+      new StringSelectMenuBuilder()
+        .setCustomId(`help_select_${message.author.id}_${Date.now()}`)
+        .setPlaceholder('Choisissez une catégorie')
+        .addOptions(options)
+        .setMaxValues(1)
+    );
+
+    const prompt = await message.channel.send({ content: 'Sélectionnez une catégorie pour afficher ses commandes:', components: [row] });
+
+    const filter = (interaction) => interaction.user.id === message.author.id;
+    const collector = prompt.createMessageComponentCollector({ filter, componentType: ComponentType.StringSelect, time: 60000 });
+
+    collector.on('collect', async (interaction) => {
+      await interaction.deferUpdate();
+      const sel = interaction.values[0];
+      let lines = [];
+      if (sel === 'all') {
+        lines = cmds.map((c) => `\`${c.name}\` - ${c.description ?? ''}`);
       } else {
-        cur += line + '\n';
+        lines = cmds.filter((c) => (c.category || 'misc') === sel).map((c) => `\`${c.name}\` - ${c.description ?? ''}`);
       }
-    }
-    if (cur) chunks.push(cur);
 
-    for (const [i, chunk] of chunks.entries()) {
-      const prefix = i === 0 ? header : '';
-      await message.channel.send(prefix + chunk);
-    }
+      if (!lines.length) {
+        await interaction.followUp({ content: 'Aucune commande trouvée pour cette catégorie.', ephemeral: true });
+        return;
+      }
+
+      const header = `Commandes: ${sel}\n`;
+      const max = 1900;
+      const chunks = [];
+      let cur = '';
+      for (const line of lines) {
+        if ((header.length + cur.length + line.length + 1) > max) {
+          chunks.push(cur);
+          cur = line + '\n';
+        } else {
+          cur += line + '\n';
+        }
+      }
+      if (cur) chunks.push(cur);
+
+      // remove components and show first chunk
+      await interaction.editReply({ content: header + chunks[0], components: [] });
+
+      for (let i = 1; i < chunks.length; i++) {
+        await interaction.followUp({ content: chunks[i], ephemeral: false });
+      }
+    });
+
+    collector.on('end', () => {
+      try { prompt.edit({ components: [] }).catch(() => {}); } catch {}
+    });
   }
 };
