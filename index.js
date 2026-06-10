@@ -103,17 +103,47 @@ client.logDebug = (...args) => {
   if (client.debug) console.log('[DEBUG]', ...args);
 };
 console.log('[BOOT] loading commands...');
-const { initDb } = await import(new URL('./src/lib/db.js', import.meta.url).href);
-const { loadCommands } = await import(new URL('./src/lib/loader.js', import.meta.url).href);
-const { handleMessage } = await import(new URL('./src/lib/messageHandler.js', import.meta.url).href);
-const { registerSniper } = await import(new URL('./src/lib/sniper.js', import.meta.url).href);
-const { registerAntiRaid } = await import(new URL('./src/modules/antiraid.js', import.meta.url).href);
-const { registerJoin } = await import(new URL('./src/modules/join.js', import.meta.url).href);
-const { registerCounters } = await import(new URL('./src/modules/counters.js', import.meta.url).href);
-const { registerTicketInteractions } = await import(new URL('./src/modules/tickets.js', import.meta.url).href);
-const { registerSetupMenu } = await import(new URL('./src/modules/setupMenu.js', import.meta.url).href);
-const { registerHelpMenu } = await import(new URL('./src/modules/helpMenu.js', import.meta.url).href);
-const { keepAlive } = await import(new URL('./keepAlive.js', import.meta.url).href);
+import { fileURLToPath } from 'node:url';
+const __file = fileURLToPath(import.meta.url);
+const __dir = path.dirname(__file);
+
+async function tryImport(candidates) {
+  for (const p of candidates) {
+    try {
+      const full = new URL(p, import.meta.url).href;
+      const fsPath = fileURLToPath(full);
+      if (!fs.existsSync(fsPath)) continue;
+      return await import(full);
+    } catch (e) {
+      // continue trying
+    }
+  }
+  throw new Error(`Module not found in candidates: ${candidates.join(', ')}`);
+}
+
+const dbMod = await tryImport(['./src/lib/db.js', './lib/db.js', './NoCostCord/src/lib/db.js', '../src/lib/db.js']);
+const loaderMod = await tryImport(['./src/lib/loader.js', './lib/loader.js', './NoCostCord/src/lib/loader.js', '../src/lib/loader.js']);
+const msgMod = await tryImport(['./src/lib/messageHandler.js', './lib/messageHandler.js', './NoCostCord/src/lib/messageHandler.js', '../src/lib/messageHandler.js']);
+const sniperMod = await tryImport(['./src/lib/sniper.js', './lib/sniper.js', './NoCostCord/src/lib/sniper.js', '../src/lib/sniper.js']);
+const antiraidMod = await tryImport(['./src/modules/antiraid.js', './modules/antiraid.js', './NoCostCord/src/modules/antiraid.js', '../src/modules/antiraid.js']);
+const joinMod = await tryImport(['./src/modules/join.js', './modules/join.js', './NoCostCord/src/modules/join.js', '../src/modules/join.js']);
+const countersMod = await tryImport(['./src/modules/counters.js', './modules/counters.js', './NoCostCord/src/modules/counters.js', '../src/modules/counters.js']);
+const ticketsMod = await tryImport(['./src/modules/tickets.js', './modules/tickets.js', './NoCostCord/src/modules/tickets.js', '../src/modules/tickets.js']);
+const setupMod = await tryImport(['./src/modules/setupMenu.js', './modules/setupMenu.js', './NoCostCord/src/modules/setupMenu.js', '../src/modules/setupMenu.js']);
+const helpMod = await tryImport(['./src/modules/helpMenu.js', './modules/helpMenu.js', './NoCostCord/src/modules/helpMenu.js', '../src/modules/helpMenu.js']);
+const keepAliveMod = await tryImport(['./keepAlive.js', './NoCostCord/keepAlive.js', '../keepAlive.js']);
+
+const { initDb } = dbMod;
+const { loadCommands } = loaderMod;
+const { handleMessage } = msgMod;
+const { registerSniper } = sniperMod;
+const { registerAntiRaid } = antiraidMod;
+const { registerJoin } = joinMod;
+const { registerCounters } = countersMod;
+const { registerTicketInteractions } = ticketsMod;
+const { registerSetupMenu } = setupMod;
+const { registerHelpMenu } = helpMod;
+const { keepAlive } = keepAliveMod;
 
 console.log('[BOOT] init db...');
 client.db = initDb();
