@@ -203,6 +203,10 @@ cython_debug/
 # Temporary file for partial code execution
 tempCodeRunnerFile.py
 
+# Allow committing our own src/lib folder
+!src/lib/
+!src/lib/**
+
 # Ruff stuff:
 .ruff_cache/
 
